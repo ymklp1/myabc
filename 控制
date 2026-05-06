@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>震动 · 伸缩</title>
+    <style>
+        :root {
+            --bg: #0f0f1a;
+            --card-bg: #1a1a2e;
+            --vibrate: #f43f5e;
+            --vibrate-glow: rgba(244, 63, 94, 0.4);
+            --stretch: #06b6d4;
+            --stretch-glow: rgba(6, 182, 212, 0.4);
+            --thumb-size: 40px;
+            --track-width: 10px;
+            --track-height: 260px;
+            --text: #e2e2f0;
+            --sub: #8888a0;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: var(--bg);
+            background-image:
+                radial-gradient(ellipse at 30% 50%, rgba(244,63,94,0.04) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 50%, rgba(6,182,212,0.04) 0%, transparent 60%);
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            overflow: hidden;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 48px;
+        }
+        .panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+        .panel .label {
+            font-size: 18px;
+            font-weight: 500;
+            letter-spacing: 3px;
+            color: var(--text);
+            transition: all 0.3s;
+        }
+        .panel .value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--sub);
+            min-width: 40px;
+            text-align: center;
+            transition: color 0.3s;
+        }
+        /* 自定义滑块容器 */
+        .slider-vertical {
+            position: relative;
+            width: 60px;
+            height: var(--track-height);
+            background: var(--card-bg);
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+            transition: box-shadow 0.4s;
+            touch-action: none; /* 关键：阻止浏览器默认手势，让拖拽生效 */
+        }
+        .slider-vertical.glow-vibrate {
+            box-shadow: 0 8px 28px rgba(0,0,0,0.4), 0 0 48px var(--vibrate-glow);
+        }
+        .slider-vertical.glow-stretch {
+            box-shadow: 0 8px 28px rgba(0,0,0,0.4), 0 0 48px var(--stretch-glow);
+        }
+        /* 轨道 */
+        .track {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: var(--track-width);
+            background: #2a2a3e;
+            border-radius: 5px;
+            pointer-events: none;
+        }
+        /* 填充部分 */
+        .fill {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: var(--track-width);
+            background: currentColor;
+            border-radius: 5px;
+            pointer-events: none;
+            transition: height 0.05s linear, background 0.3s;
+        }
+        .panel.vibrate .fill {
+            color: var(--vibrate);
+        }
+        .panel.stretch .fill {
+            color: var(--stretch);
+        }
+        /* 拖拽拇指 */
+        .thumb {
+            position: absolute;
+            left: 50%;
+            width: var(--thumb-size);
+            height: var(--thumb-size);
+            border-radius: 50%;
+            background: #fff;
+            border: 3px solid #555;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+            transform: translate(-50%, 50%);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            z-index: 5;
+            /* 让拇指底部中心作为定位点 */
+        }
+        .panel.vibrate .thumb {
+            border-color: #c0394b;
+        }
+        .panel.stretch .thumb {
+            border-color: #0d8a9e;
+        }
+        /* 高亮文字 */
+        .label.active { text-shadow: 0 0 18px currentColor; }
+        .vibrate .label.active { color: #ffb3c0; }
+        .stretch .label.active { color: #a0e8f0; }
+        .value.active { font-weight: 700; }
+        .vibrate .value.active { color: var(--vibrate); }
+        .stretch .value.active { color: var(--stretch); }
+        @media (max-width: 500px) {
+            .container { gap: 32px; }
+            :root {
+                --track-height: 220px;
+                --thumb-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 震动面板 -->
+        <div class="panel vibrate" id="panelVib">
+            <span class="value" id="valVib">0</span>
+            <div class="slider-vertical" id="sliderVib">
+                <div class="track"></div>
+                <div class="fill" id="fillVib"></div>
+                <div class="thumb" id="thumbVib"></div>
+            </div>
+            <span class="label" id="labelVib">震 动</span>
+        </div>
+        <!-- 伸缩面板 -->
+        <div class="panel stretch" id="panelStr">
+            <span class="value" id="valStr">0</span>
+            <div class="slider-vertical" id="sliderStr">
+                <div class="track"></div>
+                <div class="fill" id="fillStr"></div>
+                <div class="thumb" id="thumbStr"></div>
+            </div>
+            <span class="label" id="labelStr">伸 缩</span>
+        </div>
+    </div>
+    <script>
+        (function() {
+            // 创建滑动控制器
+            function createVerticalSlider(containerId, thumbId, fillId, valueElId, labelId, glowClass, threshold = 5) {
+                const container = document.getElementById(containerId);
+                const thumb = document.getElementById(thumbId);
+                const fill = document.getElementById(fillId);
+                const valueEl = document.getElementById(valueElId);
+                const label = document.getElementById(labelId);
+                let isDragging = false;
+                let startY = 0;
+                let startBottom = 0; // 记录拖拽开始时拇指的 bottom 值
+                const maxValue = 100;
+                // 获取容器可用高度（实际轨道高度 = 容器高度 - thumb高度，因为thumb占空间）
+                function getTrackLength() {
+                    const containerHeight = container.clientHeight;
+                    const thumbHeight = thumb.clientHeight;
+                    return containerHeight - thumbHeight;
+                }
+                // 根据值(0-100) 计算 thumb 的 bottom 百分比位置(0-100%)
+                function valueToPercent(value) {
+                    return value; // 直接映射，0对应底部0%，100对应顶部100%
+                }
+                // 根据 bottom 百分比计算值
+                function percentToValue(percent) {
+                    return Math.round(percent);
+                }
+                // 更新UI：thumb位置、填充高度、数值文字
+                function setValue(value) {
+                    value = Math.min(maxValue, Math.max(0, value));
+                    const percent = valueToPercent(value);
+                    const trackLen = getTrackLength();
+                    // thumb 的定位：底部距离容器底部为 (percent/100) * trackLen
+                    const bottomPx = (percent / 100) * trackLen;
+                    thumb.style.bottom = bottomPx + 'px';
+                    // 填充高度：从底部到当前 thumb 中心
+                    const fillHeight = bottomPx + thumb.clientHeight / 2;
+                    fill.style.height = fillHeight + 'px';
+                    // 更新数值
+                    valueEl.textContent = value;
+                    // 激活高亮
+                    const active = value > threshold;
+                    valueEl.classList.toggle('active', active);
+                    label.classList.toggle('active', active);
+                    container.classList.toggle(glowClass, active);
+                    return value;
+                }
+                // 获取当前值
+                function getCurrentValue() {
+                    const bottomPx = parseFloat(thumb.style.bottom) || 0;
+                    const trackLen = getTrackLength();
+                    const percent = (bottomPx / trackLen) * 100;
+                    return percentToValue(percent);
+                }
+                // 根据触摸/鼠标位置更新value
+                function updateFromClientY(clientY) {
+                    const rect = container.getBoundingClientRect();
+                    const thumbHeight = thumb.clientHeight;
+                    // 容器内有效轨道范围：从顶部(thumbHeight/2) 到底部(容器高度 - thumbHeight/2)
+                    const minY = rect.top + thumbHeight / 2;
+                    const maxY = rect.bottom - thumbHeight / 2;
+                    const clampedY = Math.min(maxY, Math.max(minY, clientY));
+                    // 计算在轨道中的相对位置：顶部=100，底部=0
+                    const range = maxY - minY;
+                    const percent = range > 0 ? ((maxY - clampedY) / range) * 100 : 0;
+                    const newValue = percentToValue(percent);
+                    setValue(newValue);
+                }
+                // --- 事件绑定 ---
+                function onStart(e) {
+                    e.preventDefault(); // 阻止默认事件（选择文本、页面滚动等）
+                    isDragging = true;
+                    // 记录初始位置
+                    if (e.touches) {
+                        startY = e.touches[0].clientY;
+                    } else {
+                        startY = e.clientY;
+                    }
+                    startBottom = parseFloat(thumb.style.bottom) || 0;
+                    container.classList.add(glowClass);
+                    label.classList.add('active');
+                    valueEl.classList.add('active');
+                }
+                function onMove(e) {
+                    if (!isDragging) return;
+                    e.preventDefault();
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    updateFromClientY(clientY);
+                }
+                function onEnd(e) {
+                    if (!isDragging) return;
+                    isDragging = false;
+                    const currentVal = getCurrentValue();
+                    if (currentVal <= threshold) {
+                        container.classList.remove(glowClass);
+                        label.classList.remove('active');
+                        valueEl.classList.remove('active');
+                    }
+                }
+                // 触摸事件
+                container.addEventListener('touchstart', onStart, { passive: false });
+                container.addEventListener('touchmove', onMove, { passive: false });
+                container.addEventListener('touchend', onEnd);
+                container.addEventListener('touchcancel', onEnd);
+                // 鼠标事件（用于桌面调试）
+                container.addEventListener('mousedown', onStart);
+                document.addEventListener('mousemove', function(e) {
+                    if (!isDragging) return;
+                    e.preventDefault();
+                    updateFromClientY(e.clientY);
+                });
+                document.addEventListener('mouseup', onEnd);
+                // 点击轨道直接跳转（非拖动情况）
+                container.addEventListener('click', function(e) {
+                    if (isDragging) return; // 如果刚拖动过，忽略
+                    // 直接根据点击位置设置值
+                    const rect = container.getBoundingClientRect();
+                    const clientY = e.clientY;
+                    const thumbHeight = thumb.clientHeight;
+                    const minY = rect.top + thumbHeight / 2;
+                    const maxY = rect.bottom - thumbHeight / 2;
+                    if (clientY >= minY && clientY <= maxY) {
+                        updateFromClientY(clientY);
+                    }
+                });
+                // 初始化位置为0
+                setValue(0);
+                // 窗口大小变化时重新计算
+                window.addEventListener('resize', () => {
+                    setValue(getCurrentValue());
+                });
+                return { setValue, getCurrentValue };
+            }
+            // 创建两个滑块
+            const vibSlider = createVerticalSlider('sliderVib', 'thumbVib', 'fillVib', 'valVib', 'labelVib', 'glow-vibrate');
+            const strSlider = createVerticalSlider('sliderStr', 'thumbStr', 'fillStr', 'valStr', 'labelStr', 'glow-stretch');
+            console.log('✅ 自定义垂直滑块已就绪，手指拖拽流畅，左震动右伸缩');
+        })();
+    </script>
+</body>
+</html>
+
